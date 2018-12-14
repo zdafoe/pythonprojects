@@ -4,10 +4,10 @@ from threading import Thread
 import time
 import sys
 import os
+# This function returns the host ip adress
 def get_ip():
     s = socket(AF_INET, SOCK_DGRAM)
     try:
-        # doesn't even have to be reachable
         s.connect(('10.255.255.255', 1))
         IP = s.getsockname()[0]
     except:
@@ -15,6 +15,7 @@ def get_ip():
     finally:
         s.close()
     return IP
+#this function listens for messages sent to the host ip
 def serve(r):
     PORT_NUMBER = 5024
     SIZE = 1024
@@ -25,6 +26,7 @@ def serve(r):
         (data,addr) = mySocket.recvfrom(SIZE)
         if str(data).split(':')!='local IM at':
             print(str(data).replace("b'",'').replace("'",''))
+# This function broadcasts a message for other other machines running the script on the same local network to add the host ip to their send list
 def ping(r):
     hostip=get_ip()
     broadcastdata='local IM at:'+str(hostip)
@@ -37,6 +39,7 @@ def ping(r):
             hostlist[3]=str(x)
             broadcastsocket.sendto(broadcastdata,('.'.join(hostlist),5023))
         time.sleep(2)
+# This function listens for the message sent by other machines via the ping function and adds the other machines ips to the send list
 def getping(iplist,r):
     hostip=get_ip()
     locatesoc=socket(AF_INET, SOCK_DGRAM )
@@ -53,7 +56,8 @@ def getping(iplist,r):
                         iplist.put(sendaddresslist)
         except:
             pass
-def pp(iplist,r):
+# this process notifies the user if others have joined the groupchat and writes the send list to a temporary file to be used in sending texts in the groupchat
+def listupdate(iplist,r):
     l2=[]
     while r.running:
         l1=iplist.get()
@@ -65,6 +69,7 @@ def pp(iplist,r):
             f.write(','.join(l1))
             f.close()
         time.sleep(.11)
+#this class allows for the closing of all threads
 class run():
     def __init__(self):
         self.running=True
@@ -77,7 +82,7 @@ if __name__ == "__main__":
     serverprocess=Thread(target=serve,args=(r,))
     pingprocess=Thread(target=ping,args=(r,))
     getpingprocess=Thread(target=getping,args=(iplist,r))
-    gg=Thread(target=pp,args=(iplist,r))
+    lsprocess=Thread(target=listupdate,args=(iplist,r))
     serverprocess.start()
     pingprocess.start()
     getpingprocess.start()
@@ -98,7 +103,7 @@ if __name__ == "__main__":
             serverprocess.join()
             pingprocess.join()
             getpingprocess.join()
-            gg.join()
+            lsprocess.join()
             try:
                 os.remove("LANCHATIPS.temp")
             except:
